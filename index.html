@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Calendario IDML</title>
+<style>
+:root {
+  --navy: #1f3a5f; --ink: #1d2430; --muted: #687280; --line: #dfe3e8; --bg: #ffffff; --bg2: #f5f7f9;
+  --sab: #f4f5f7; --dom: #eaedf0;
+  --rosso: #b91c1c; --rosso-bg: #fbe4e4; --arancio: #b45309; --arancio-bg: #fdecd8; --viola: #6b2c91;
+  --t-verde: #0b6e5f; --t-verde-bg: #cdeee6;
+  --t-blu: #1d4ed8;  --t-blu-bg: #dce7fe;
+  --t-viola: #6d28d9; --t-viola-bg: #ede9fe;
+  --t-ardesia: #475569;  --t-ardesia-bg: #e4e8ee;
+  --t-oro: #a16207;  --t-oro-bg: #fcefc2;
+  --t-grigio: #6b7280;   --t-grigio-bg: #eeeff1;
+  --raggio: 6px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+button { font: inherit; color: inherit; }
+.app { max-width: 1180px; margin: 0 auto; padding: 20px 16px 28px; }
+body.embed .app { padding: 10px 10px 16px; }
+
+/* testata */
+.testata { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.testata h1 { margin: 0; font-size: 1.6rem; color: var(--navy); letter-spacing: -.01em; }
+.testata p { margin: 0; color: var(--muted); }
+body.embed .testata { display: none; }
+body.senza-comandi .barra, body.senza-comandi .filtri { display: none; }
+
+/* barra comandi */
+.barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
+.gruppo { display: flex; align-items: center; gap: 4px; }
+.viste { background: var(--bg2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.viste button { border: 0; background: transparent; padding: 5px 13px; border-radius: 999px; cursor: pointer; font-size: .9rem; }
+.viste button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+.nav { flex: 1 1 auto; justify-content: center; }
+.nav .etichetta { min-width: 9.5em; text-align: center; font-weight: 700; font-size: 1.12rem; color: var(--navy); }
+.tondo { width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+.btn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: .9rem; white-space: nowrap; text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; gap: 5px; }
+.btn:hover, .tondo:hover, .viste button:hover { border-color: #b7c0ca; }
+.btn.primario { background: var(--t-verde); border-color: var(--t-verde); color: #fff; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+
+/* filtri */
+.filtri { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.filtro { --c: var(--t-grigio); --cb: var(--t-grigio-bg); border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 3px 11px 3px 8px; cursor: pointer; font-size: .82rem; display: inline-flex; align-items: center; gap: 6px; }
+.filtro .pallino { width: 11px; height: 11px; border-radius: 3px; background: var(--cb); border: 2px solid var(--c); }
+.filtro[aria-pressed="false"] { color: #9aa2ad; background: var(--bg2); }
+.filtro[aria-pressed="false"] .pallino { background: transparent; border-color: #c4cad2; }
+.filtro.fest .pallino { background: var(--rosso-bg); border-color: var(--rosso); }
+
+.avviso { border: 1px solid #f0d58a; background: #fff8e1; color: #6b4e00; padding: 8px 12px; border-radius: var(--raggio); margin-bottom: 12px; font-size: .88rem; }
+.avviso.errore { border-color: #f1b4b4; background: #fdeeee; color: #8a1c1c; }
+.vuoto { color: var(--muted); padding: 28px 8px; text-align: center; }
+
+/* colori per tipo */
+.t-verde { --c: var(--t-verde); --cb: var(--t-verde-bg); }
+.t-blu  { --c: var(--t-blu);  --cb: var(--t-blu-bg); }
+.t-viola  { --c: var(--t-viola);  --cb: var(--t-viola-bg); }
+.t-ardesia  { --c: var(--t-ardesia);  --cb: var(--t-ardesia-bg); }
+.t-oro  { --c: var(--t-oro);  --cb: var(--t-oro-bg); }
+.t-grigio   { --c: var(--t-grigio);   --cb: var(--t-grigio-bg); }
+
+.fest { font-size: .7rem; font-weight: 600; line-height: 1.15; }
+.fest.naz { color: var(--rosso); } .fest.loc { color: var(--arancio); } .fest.lit { color: var(--viola); }
+
+.chip { display: block; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--c); background: var(--cb);
+  font-size: .74rem; line-height: 1.25; padding: 2px 5px; border-radius: 3px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip .ora { font-weight: 700; color: var(--c); margin-right: 3px; }
+.chip.segue { border-left-style: dashed; }
+.chip:hover { filter: brightness(.97); }
+.chip.riservato { background-image: repeating-linear-gradient(135deg, transparent 0 5px, rgba(255,255,255,.65) 5px 8px); }
+.badge-ris { display: inline-block; font-size: .7rem; font-weight: 700; color: #8a1c1c; background: #f8e1e1; border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: 1px; }
+.badge-equipe { align-self: center; font-size: .78rem; font-weight: 700; color: #8a1c1c; background: #f8e1e1; border-radius: 999px; padding: 3px 11px; }
+.filtro.ris .pallino { background: #f8e1e1; border-color: #8a1c1c; }
+.note-interne { margin: 8px 0 0; padding: 7px 9px; background: #fff8e1; border: 1px solid #f0d58a; border-radius: var(--raggio); font-size: .86rem; white-space: pre-line; overflow-wrap: anywhere; }
+.note-interne b { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: #6b4e00; margin-bottom: 2px; }
+.note-interne a { color: #1d4ed8; }
+
+/* vista mese */
+.mese { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: var(--raggio); overflow: hidden; }
+.mese .intest { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 5px 7px; background: var(--bg2); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.cella { min-height: 6.3rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px 5px 6px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cella.sab { background: var(--sab); } .cella.dom { background: var(--dom); }
+.cella.naz { background: var(--rosso-bg); } .cella.loc { background: var(--arancio-bg); }
+.cella.fuori { background: #fbfcfd; }
+.cella.fuori .n, .cella.fuori .fest { color: #b5bcc5; }
+.cella.fuori .chip { opacity: .5; }
+.cella .testa { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; }
+.cella .n { font-weight: 700; font-size: .85rem; min-width: 1.6em; }
+.cella.dom .n, .cella.naz .n { color: var(--rosso); }
+.cella .fest { text-align: right; }
+.cella.oggi .n { background: var(--navy); color: #fff; border-radius: 999px; text-align: center; padding: 0 5px; }
+
+/* agenda (schermi stretti) */
+.agenda { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.agenda li { display: flex; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.agenda li.dom, .agenda li.naz { background: #fbf6f6; }
+.agenda .ag-data { width: 2.8em; flex: none; text-align: center; line-height: 1.1; }
+.agenda .ag-data b { display: block; font-size: 1.2rem; }
+.agenda .ag-data span { font-size: .75rem; color: var(--muted); }
+.agenda li.dom .ag-data b, .agenda li.naz .ag-data b { color: var(--rosso); }
+.agenda .ag-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.agenda .chip { font-size: .85rem; padding: 4px 7px; white-space: normal; }
+
+/* vista elenco */
+.elenco h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 6px; }
+.elenco h2:first-child { margin-top: 4px; }
+.voce { display: flex; gap: 14px; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: var(--raggio); margin-bottom: 8px; background: var(--bg); }
+.voce-data { flex: none; width: 3.4em; text-align: center; line-height: 1.05; }
+.voce-data .g { display: block; font-size: 1.55rem; font-weight: 700; color: var(--ink); }
+.voce-data .m { display: block; font-size: .78rem; text-transform: uppercase; color: var(--muted); }
+.voce-data .w { display: block; font-size: .78rem; color: var(--muted); }
+.voce-corpo { min-width: 0; flex: 1; }
+.voce-tipo { display: inline-block; font-size: .72rem; font-weight: 700; color: var(--c); background: var(--cb); border-radius: 999px; padding: 1px 8px; }
+.voce h3 { margin: 3px 0 2px; font-size: 1rem; }
+.voce .meta { margin: 0; color: var(--muted); font-size: .86rem; }
+.voce .descr { margin: 5px 0 0; font-size: .88rem; white-space: pre-line; }
+.voce.passato { opacity: .6; }
+.voce.stesso-giorno { margin-top: -4px; }
+.voce.stesso-giorno .voce-data { visibility: hidden; }
+.piede-elenco { display: flex; justify-content: center; margin-top: 10px; }
+
+/* vista anno */
+.anno { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px 18px; }
+.mini-tit { border: 0; background: none; padding: 0 0 4px; font-weight: 700; color: var(--navy); cursor: pointer; font-size: .95rem; }
+.mini-tit:hover { text-decoration: underline; }
+.mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; font-size: .74rem; }
+.mini-grid .ig { text-align: center; color: var(--muted); font-size: .66rem; padding-bottom: 2px; }
+.mini-grid .d { position: relative; text-align: center; padding: 3px 0; border-radius: 4px; cursor: default; }
+.mini-grid .d.vuoto { visibility: hidden; }
+.mini-grid .d.dom, .mini-grid .d.naz { color: var(--rosso); font-weight: 700; }
+.mini-grid .d.loc { color: var(--arancio); font-weight: 700; }
+.mini-grid .d.sab { background: var(--sab); } .mini-grid .d.dom { background: var(--dom); }
+.mini-grid .d.naz { background: var(--rosso-bg); } .mini-grid .d.loc { background: var(--arancio-bg); }
+.mini-grid .d.ev { background: var(--cb); color: var(--ink); font-weight: 700; box-shadow: inset 0 -3px 0 var(--c); cursor: pointer; }
+.mini-grid .d.lit::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--viola); }
+.mini-grid .d.oggi { outline: 2px solid var(--navy); outline-offset: -2px; }
+.legenda-anno { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; font-size: .78rem; color: var(--muted); }
+.legenda-anno span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: var(--sw); }
+
+/* finestre */
+dialog { border: 0; border-radius: 10px; padding: 0; width: min(460px, calc(100vw - 24px)); box-shadow: 0 18px 50px rgba(15, 30, 50, .25); color: var(--ink); }
+dialog::backdrop { background: rgba(20, 30, 45, .35); }
+.dlg { padding: 18px 20px 16px; }
+.dlg h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.dlg p { margin: 6px 0; }
+.dlg .meta { color: var(--muted); font-size: .9rem; }
+.dlg .descr { white-space: pre-line; }
+.dlg .azioni { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.dlg input { width: 100%; font: inherit; font-size: .82rem; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--raggio); background: var(--bg2); }
+.dlg ul { padding-left: 1.1em; margin: 8px 0; font-size: .88rem; }
+.dlg li { margin: 3px 0; }
+.scelte { display: grid; gap: 8px; margin-top: 10px; }
+.scelte .btn { justify-content: center; padding: 9px 12px; border-radius: var(--raggio); }
+
+.piede { margin-top: 14px; font-size: .75rem; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+#stampa { display: none; }
+
+@media (max-width: 640px) {
+  .nav { order: -1; flex-basis: 100%; }
+  .barra { justify-content: space-between; }
+  .testata h1 { font-size: 1.3rem; }
+}
+
+/* ---------- stampa A4 ---------- */
+@page { size: A4 portrait; margin: 10mm 11mm; }
+@media print {
+  body > *:not(#stampa) { display: none !important; }
+  #stampa { display: block; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 9pt/1.25 Arial, Helvetica, sans-serif; }
+}
+.pagina { break-after: page; page-break-after: always; }
+.pagina:last-child { break-after: auto; page-break-after: auto; }
+.pagina header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5pt solid var(--navy); padding-bottom: 1.5mm; margin-bottom: 1.5mm; }
+.pagina header h2 { margin: 0; font-size: 18pt; color: var(--navy); }
+.pagina header span { font-size: 8.5pt; color: var(--muted); }
+.pagina table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.pagina th { font-size: 8pt; text-align: left; color: var(--navy); background: #e3e9f0; padding: 1.2mm 1.5mm; }
+.pagina th.evid { background: var(--t-verde); color: #fff; }
+.pagina td { height: 7.1mm; border-bottom: .5pt solid #c8c8c8; border-left: .5pt solid #dadada; padding: .5mm 1.5mm; vertical-align: middle; font-size: 7.5pt; overflow: hidden; }
+.pagina td:first-child { border-left: 0; text-align: right; font-weight: 700; font-size: 10pt; padding-right: 1mm; }
+.pagina td.gs { border-left: 0; color: #444; font-size: 8pt; }
+.pagina tr.sab td { background: #f2f2f2; } .pagina tr.dom td { background: #e4e4e4; }
+.pagina tr.naz td { background: var(--rosso-bg); } .pagina tr.loc td { background: var(--arancio-bg); }
+.pagina tr.naz td:first-child, .pagina tr.naz td.gs, .pagina tr.loc td:first-child { color: var(--rosso); }
+.pagina tr.lun td { border-top: 1.2pt solid #8c8c8c; }
+.pagina tr.vuota td { border-left: 0; border-bottom-color: #ececec; background: none; }
+.pagina .pev { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pagina .pev i { display: inline-block; width: 2.2mm; height: 2.2mm; border-radius: .5mm; background: var(--c); margin-right: 1mm; vertical-align: 0; font-style: normal; }
+.pagina .pev b { color: var(--c); }
+.pagina .pev.ris { font-style: italic; }
+.pagina .note { margin-top: 3mm; font-size: 8pt; font-weight: 700; color: var(--navy); }
+.pagina .riga { height: 7mm; border-bottom: .5pt solid #bfbfbf; }
+.pagina footer { margin-top: 2mm; font-size: 6.5pt; color: #888; text-align: right; }
+
+/* prospetto annuale: un foglio A4 orizzontale */
+.prospetto header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.5mm; }
+.prospetto header h2 { margin: 0; font-size: 15pt; color: var(--navy); }
+.prospetto header span { font-size: 8pt; color: var(--muted); }
+.tab-anno { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tab-anno th { background: var(--navy); color: #fff; font-size: 7pt; font-weight: 700; padding: .7mm 0; text-align: center; border-left: .6pt solid #fff; }
+.tab-anno td { height: 5.25mm; padding: 0; border: .35pt solid #cfcfcf; border-left: .9pt solid #8c8c8c; font-size: 5.5pt; line-height: 1; overflow: hidden; }
+.tab-anno td:last-child { border-right: .9pt solid #8c8c8c; }
+.tab-anno td.sab { background: #f2f2f2; } .tab-anno td.dom { background: #e2e2e2; }
+.tab-anno td.naz { background: var(--rosso-bg); } .tab-anno td.loc { background: var(--arancio-bg); }
+.tab-anno td.nd { background: #d0d0d0; }
+.tab-anno .ac { display: flex; align-items: stretch; height: 5.25mm; white-space: nowrap; overflow: hidden; }
+.tab-anno .ag { flex: none; width: 3.3mm; text-align: right; font-weight: 700; font-size: 6.2pt; align-self: center; }
+.tab-anno .aw { flex: none; width: 2.4mm; text-align: center; color: #666; font-size: 4.8pt; align-self: center; }
+.tab-anno td.dom .ag, .tab-anno td.naz .ag, .tab-anno td.dom .aw, .tab-anno td.naz .aw { color: var(--rosso); }
+.tab-anno .ae { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; background: var(--cb); border-left: .8mm solid var(--c); padding: 0 .5mm; display: flex; align-items: center; }
+.tab-anno .ae.ris { font-style: italic; }
+.tab-anno .piu { flex: none; font-size: 5pt; font-weight: 700; padding: 0 .4mm; align-self: center; }
+.tab-anno .af { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 700; font-size: 5pt; padding-left: .4mm; align-self: center; }
+.tab-anno .af.naz { color: var(--rosso); } .tab-anno .af.loc { color: var(--arancio); } .tab-anno .af.lit { color: var(--viola); }
+.prospetto .leg { display: flex; flex-wrap: wrap; gap: 1mm 4mm; margin-top: 1.6mm; font-size: 6.5pt; color: #444; align-items: center; }
+.prospetto .leg i { display: inline-block; width: 3mm; height: 2.4mm; margin-right: 1mm; vertical-align: -.3mm; background: var(--cb, #fff); border-left: .8mm solid var(--c, #999); }
+.prospetto .leg .stamp { margin-left: auto; color: #888; }
+</style>
+<style id="stilePagina"></style>
+</head>
+<body>
+<div class="app">
+  <header class="testata">
+    <h1 id="titolo">Calendario IDML</h1>
+    <p id="sottotitolo"></p>
+  </header>
+
+  <div class="barra">
+    <div class="gruppo viste" role="group" aria-label="Vista">
+      <button type="button" data-vista="mese">Mese</button>
+      <button type="button" data-vista="elenco">Elenco</button>
+      <button type="button" data-vista="anno">Anno</button>
+    </div>
+    <div class="gruppo nav" id="nav">
+      <button type="button" class="tondo" id="prec" aria-label="Precedente">‹</button>
+      <span class="etichetta" id="etichetta" aria-live="polite"></span>
+      <button type="button" class="tondo" id="succ" aria-label="Successivo">›</button>
+      <button type="button" class="btn" id="oggi">Oggi</button>
+    </div>
+    <div class="gruppo">
+      <button type="button" class="btn primario" id="btnIscriviti" hidden>＋ Aggiungi al mio calendario</button>
+      <button type="button" class="btn" id="btnStampa">Stampa</button>
+      <a class="btn" id="paginaIntera" target="_blank" rel="noopener" hidden>Apri ↗</a>
+    </div>
+  </div>
+
+  <div class="filtri" id="filtri" role="group" aria-label="Mostra"></div>
+  <div class="avviso" id="avviso" hidden></div>
+  <main id="vista" aria-live="polite"><p class="vuoto">Caricamento…</p></main>
+  <div class="piede"><span id="fonte"></span><span>Festività civili e principali ricorrenze liturgiche calcolate automaticamente.</span></div>
+</div>
+
+<dialog id="dlgEvento"><div class="dlg" id="dlgEventoCorpo"></div></dialog>
+
+<dialog id="dlgIscriviti">
+  <div class="dlg">
+    <h2>Aggiungi al tuo calendario</h2>
+    <p>Iscrivendoti, gli appuntamenti compaiono nel calendario del telefono o del computer e si aggiornano da soli.</p>
+    <input id="linkFeed" readonly aria-label="Indirizzo del calendario">
+    <p class="avviso errore" id="avvisoChiave" hidden>Questo indirizzo contiene la chiave riservata e mostra anche gli appuntamenti riservati e le note interne: non condividerlo con chi non deve vederli.</p>
+    <ul>
+      <li><b>iPhone, iPad, Mac:</b> tocca «Apri nell'app Calendario».</li>
+      <li><b>Google Calendar</b> (dal computer): Altri calendari › ＋ › Da URL, e incolla l'indirizzo.</li>
+      <li><b>Outlook:</b> Aggiungi calendario › Iscriviti dal Web, e incolla l'indirizzo.</li>
+    </ul>
+    <p class="meta">Le modifiche arrivano con qualche ora di ritardo: ogni app ricarica il calendario con i suoi tempi.</p>
+    <div class="azioni">
+      <a class="btn" id="apriWebcal">Apri nell'app Calendario</a>
+      <button type="button" class="btn" id="copiaFeed">Copia indirizzo</button>
+      <button type="button" class="btn primario" data-chiudi>Chiudi</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgStampa">
+  <div class="dlg">
+    <h2>Stampa su fogli A4</h2>
+    <p class="meta">Fogli mensili con gli appuntamenti già scritti e lo spazio per le note, oppure il prospetto dell'anno su un solo foglio orizzontale. Per un PDF scegli «Salva come PDF» nella finestra di stampa.</p>
+    <div class="scelte">
+      <button type="button" class="btn" id="stampaMese"></button>
+      <button type="button" class="btn" id="stampaAnno"></button>
+      <button type="button" class="btn" id="stampaProspetto"></button>
+      <button type="button" class="btn" data-chiudi>Annulla</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="stampa" aria-hidden="true"></div>
+
+<script>
+'use strict';
+
+// ===================== IMPOSTAZIONI =====================
+const CONFIG = {
+  // Link CSV della scheda «Pubblico» (File › Condividi › Pubblica sul web › Pubblico › .csv)
+  URL_CSV: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRRHlsq7JnXYFgH9IDh6MdfF3bJEARKuqejAOG98epApqRIzitgNdxQrMp_j2EKduZc41_E3SZfVmNc/pub?gid=1228532134&single=true&output=csv',
+  // Link dell'app web Apps Script che termina con /exec (feed iCal). Vuoto = pulsante nascosto.
+  // Serve anche alla vista riservata (?chiave=...). La chiave NON va scritta qui: questo file è pubblico.
+  URL_FEED_ICS: 'https://script.google.com/macros/s/AKfycbxjchXJjWco3sEAVArNlMWVO9Do9oTByDu2W8OzsC6CV9G0ZpjTz1pCMCcB0esG4ERY/exec',
+  TITOLO: 'Calendario IDML',
+  SOTTOTITOLO: 'Formazione liturgica e musicale',
+  // Vista che si apre se l'indirizzo non dice altro: 'elenco', 'mese' o 'anno'
+  VISTA_PREDEFINITA: 'elenco',
+  // Festività di Torino (San Giovanni, Consolata): false per nasconderle
+  FESTIVITA_TORINO: true,
+};
+
+// Tipi di appuntamento: il testo della colonna «Tipo» viene riconosciuto dall'inizio.
+const TIPI = [
+  { chiave: 'corso',       classe: 't-verde', nome: 'Corsi in presenza',      prefissi: ['corso'] },
+  { chiave: 'online',      classe: 't-blu',   nome: 'Incontri online',        prefissi: ['incontro online', 'online', 'zoom', 'videoconferenza'] },
+  { chiave: 'piattaforma', classe: 't-viola', nome: 'Lezioni su piattaforma', prefissi: ['lezione su piattaforma', 'piattaforma'] },
+  { chiave: 'evento',      classe: 't-oro',   nome: 'Incontri ed eventi',     prefissi: ['incontro', 'evento', 'conferenz', 'concerto', 'celebrazion'] },
+  { chiave: 'altro',       classe: 't-grigio', nome: 'Altro',                 prefissi: [] },
+];
+
+// ===================== DATE E NOMI =====================
+const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+const MESI_BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+const GG = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+const GG_LUNGHI = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const giorno = (y, m, d) => new Date(y, m, d);
+const piu = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const chiaveData = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const stessoGiorno = (a, b) => chiaveData(a) === chiaveData(b);
+const oggi = (() => { const t = new Date(); return giorno(t.getFullYear(), t.getMonth(), t.getDate()); })();
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ===================== FESTIVITÀ =====================
+function pasqua(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  return giorno(y, Math.floor((h + l - 7 * m + 114) / 31) - 1, (h + l - 7 * m + 114) % 31 + 1);
+}
+const cacheFestivita = {};
+function festivitaAnno(y) {
+  if (cacheFestivita[y]) return cacheFestivita[y];
+  const P = pasqua(y);
+  const natale = giorno(y, 11, 25);
+  const avvento = piu(natale, -(natale.getDay() || 7) - 21);
+  const epif = giorno(y, 0, 6);
+  const battesimo = piu(epif, (7 - epif.getDay()) % 7 || 7);
+  const N = 'naz', L = 'loc', R = 'lit';
+  const elenco = [
+    [giorno(y, 0, 1), 'Capodanno · Maria SS. Madre di Dio', 'Capodanno', N],
+    [epif, 'Epifania del Signore', 'Epifania', N],
+    [battesimo, 'Battesimo del Signore', 'Battesimo', R],
+    [piu(battesimo, 14), 'Domenica della Parola di Dio', 'Dom. Parola', R],
+    [piu(P, -46), 'Mercoledì delle Ceneri', 'Ceneri', R],
+    [piu(P, -7), 'Domenica delle Palme', 'Palme', R],
+    [piu(P, -3), 'Giovedì Santo', 'Giov. Santo', R],
+    [piu(P, -2), 'Venerdì Santo', 'Ven. Santo', R],
+    [piu(P, -1), 'Sabato Santo · Veglia pasquale', 'Sab. Santo', R],
+    [P, 'Pasqua di Risurrezione', 'Pasqua', N],
+    [piu(P, 1), "Lunedì dell'Angelo", 'Pasquetta', N],
+    [giorno(y, 3, 25), 'Festa della Liberazione', 'Liberazione', N],
+    [giorno(y, 4, 1), 'Festa del Lavoro', 'Fest. Lavoro', N],
+    [piu(P, 42), 'Ascensione del Signore', 'Ascensione', R],
+    [piu(P, 49), 'Pentecoste', 'Pentecoste', R],
+    [piu(P, 56), 'Santissima Trinità', 'SS. Trinità', R],
+    [piu(P, 63), 'Corpus Domini', 'Corpus Domini', R],
+    [giorno(y, 5, 2), 'Festa della Repubblica', 'Repubblica', N],
+    [giorno(y, 5, 29), 'Santi Pietro e Paolo', 'Ss. Pietro e Paolo', R],
+    [giorno(y, 7, 15), 'Assunzione di Maria (Ferragosto)', 'Ferragosto', N],
+    [giorno(y, 10, 1), 'Tutti i Santi', 'Ognissanti', N],
+    [giorno(y, 10, 2), 'Commemorazione dei defunti', 'Defunti', R],
+    [piu(avvento, -7), 'Cristo Re', 'Cristo Re', R],
+    [avvento, 'I domenica di Avvento', 'I Avvento', R],
+    [giorno(y, 11, 8), 'Immacolata Concezione', 'Immacolata', N],
+    [natale, 'Natale del Signore', 'Natale', N],
+    [giorno(y, 11, 26), 'Santo Stefano', 'S. Stefano', N],
+  ];
+  if (y >= 2026) elenco.push([giorno(y, 9, 4), "San Francesco d'Assisi, patrono d'Italia", 'S. Francesco', N]);
+  if (CONFIG.FESTIVITA_TORINO) {
+    elenco.push([giorno(y, 5, 20), 'B.V. Maria Consolata, patrona di Torino', 'Consolata', R]);
+    elenco.push([giorno(y, 5, 24), 'San Giovanni Battista, patrono di Torino', 'S. Giovanni', L]);
+  }
+  const mappa = {};
+  elenco.forEach(([d, nome, breve, tipo]) => {
+    const k = chiaveData(d);
+    if (!mappa[k]) mappa[k] = { nome, breve, tipo };
+    else { // due ricorrenze nello stesso giorno: prevale la civile
+      const prima = mappa[k];
+      const vince = (tipo === N || (tipo === L && prima.tipo === R)) ? { nome, breve, tipo } : prima;
+      const altra = vince === prima ? { nome, breve, tipo } : prima;
+      mappa[k] = { nome: vince.nome + ' · ' + altra.nome, breve: vince.breve, tipo: vince.tipo };
+    }
+  });
+  return (cacheFestivita[y] = mappa);
+}
+const festivitaDi = d => festivitaAnno(d.getFullYear())[chiaveData(d)] || null;
+
+// ===================== DATI =====================
+function leggiCSV(testo) {
+  testo = testo.replace(/^﻿/, '');
+  const prima = testo.split('\n', 1)[0];
+  const sep = (prima.split(';').length > prima.split(',').length) ? ';' : ',';
+  const righe = []; let riga = [], campo = '', virg = false;
+  for (let i = 0; i < testo.length; i++) {
+    const c = testo[i];
+    if (virg) {
+      if (c === '"') { if (testo[i + 1] === '"') { campo += '"'; i++; } else virg = false; }
+      else campo += c;
+    } else if (c === '"') virg = true;
+    else if (c === sep) { riga.push(campo); campo = ''; }
+    else if (c === '\n') { riga.push(campo); righe.push(riga); riga = []; campo = ''; }
+    else if (c !== '\r') campo += c;
+  }
+  if (campo !== '' || riga.length) { riga.push(campo); righe.push(riga); }
+  return righe;
+}
+
+function leggiData(s) {
+  s = String(s || '').trim();
+  let m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return giorno(+m[1], +m[2] - 1, +m[3]);
+  m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m) return giorno(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[2] - 1, +m[1]);
+  return null;
+}
+function leggiOra(s) {
+  const m = String(s || '').match(/(\d{1,2})[:.](\d{2})/);
+  return m && +m[1] < 24 && +m[2] < 60 ? String(+m[1]).padStart(2, '0') + ':' + m[2] : '';
+}
+const normalizza = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+function tipoDi(testo) {
+  const t = normalizza(testo);
+  return TIPI.find(x => x.prefissi.some(p => t.startsWith(normalizza(p)))) || TIPI[TIPI.length - 1];
+}
+
+function trasformaRighe(righe) {
+  if (!righe.length) return [];
+  const intest = righe[0].map(normalizza);
+  const col = nome => intest.findIndex(h => h.startsWith(nome));
+  const c = {
+    inizio: col('data inizio'), fine: col('data fine'), oraI: col('ora inizio'), oraF: col('ora fine'),
+    tipo: col('tipo'), titolo: col('titolo'), luogo: col('luogo'), descr: col('descrizione'),
+  };
+  if (c.inizio < 0) throw new Error('Nel CSV manca la colonna «Data inizio»: hai pubblicato la scheda «Pubblico»?');
+  const val = (r, i) => (i >= 0 && r[i] != null ? String(r[i]).trim() : '');
+  const eventi = [];
+  righe.slice(1).forEach((r, n) => {
+    const inizio = leggiData(val(r, c.inizio));
+    if (!inizio) return;
+    let fine = leggiData(val(r, c.fine)) || inizio;
+    if (fine < inizio) fine = inizio;
+    const tipoTesto = val(r, c.tipo);
+    const tipo = tipoDi(tipoTesto);
+    eventi.push({
+      id: 'e' + n, inizio, fine, oraI: leggiOra(val(r, c.oraI)), oraF: leggiOra(val(r, c.oraF)),
+      tipo, tipoTesto: tipoTesto || tipo.nome, titolo: val(r, c.titolo) || tipoTesto || tipo.nome,
+      luogo: val(r, c.luogo), descr: val(r, c.descr),
+    });
+  });
+  return eventi.sort((a, b) => a.inizio - b.inizio || (a.oraI || '00:00').localeCompare(b.oraI || '00:00'));
+}
+
+/** Dati dall'app web Apps Script (?formato=json): date aaaammgg, ore hh:mm. */
+function trasformaJson(dati) {
+  const data = s => (/^\d{8}$/.test(s) ? giorno(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)) : null);
+  return (dati.eventi || []).map((x, n) => {
+    const inizio = data(x.inizio);
+    if (!inizio) return null;
+    let fine = data(x.fine) || inizio;
+    if (fine < inizio) fine = inizio;
+    const tipo = tipoDi(x.tipo);
+    return {
+      id: 'j' + n, inizio, fine, oraI: leggiOra(x.oraInizio), oraF: leggiOra(x.oraFine),
+      tipo, tipoTesto: x.tipo || tipo.nome, titolo: x.titolo || x.tipo || tipo.nome,
+      luogo: x.luogo || '', descr: x.descrizione || '', note: x.note || '', riservato: !!x.riservato,
+    };
+  }).filter(Boolean)
+    .sort((a, b) => a.inizio - b.inizio || (a.oraI || '00:00').localeCompare(b.oraI || '00:00'));
+}
+
+/** Testo con i link cliccabili (per le note interne, es. link Zoom). */
+function conLink(testo) {
+  return esc(testo).replace(/https?:\/\/[^\s<]*[^\s<.,;:)\]]/g, u => '<a href="' + u + '" target="_blank" rel="noopener">' + u + '</a>');
+}
+const htmlNote = e => (e.note ? '<div class="note-interne"><b>Note interne</b>' + conLink(e.note) + '</div>' : '');
+const htmlRis = e => (e.riservato ? '<span class="badge-ris">Riservato</span>' : '');
+
+function datiDiEsempio() {
+  const righe = [['Data inizio', 'Data fine', 'Ora inizio', 'Ora fine', 'Tipo', 'Titolo', 'Luogo', 'Descrizione pubblica']];
+  const iso = chiaveData;
+  let mer = piu(oggi, ((3 - oggi.getDay() + 7) % 7) - 14);          // mercoledì di due settimane fa
+  for (let k = 0; k < 16; k++, mer = piu(mer, 7)) {
+    if (festivitaDi(mer) && festivitaDi(mer).tipo === 'naz') continue;
+    righe.push([iso(mer), '', '20:00', '22:00', 'Corso in presenza', 'Vocalità – corso base', 'Parrocchia San Leonardo Murialdo', 'Docente Pietro Mussino']);
+    righe.push([iso(mer), '', '20:00', '22:00', 'Corso in presenza', 'Proclamare la Parola', 'Parrocchia San Leonardo Murialdo', 'Docente Bruno Barberis']);
+    if (k % 2 === 0) righe.push([iso(mer), '', '', '', 'Lezione su piattaforma', 'Liturgia – L\'anno liturgico', 'Piattaforma PERCORSI', 'Lezione registrata disponibile da oggi.']);
+    if (k % 4 === 1) righe.push([iso(piu(mer, 6)), '', '21:00', '22:30', 'Incontro online', 'Il repertorio per l\'Avvento', 'Online', 'Incontro in videoconferenza: il link arriva per email agli iscritti.']);
+  }
+  righe.push([iso(piu(oggi, 25)), '', '16:00', '18:00', 'Incontro / evento', 'Concerto di fine modulo', 'Cattedrale di Torino', 'Ingresso libero.']);
+  return trasformaRighe(righe);
+}
+
+// ===================== STATO =====================
+const params = new URLSearchParams(location.search);
+const EMBED = params.get('embed') === '1';
+const SENZA_COMANDI = params.get('comandi') === '0';
+const CHIAVE = (params.get('chiave') || '').trim();   // vista riservata: solo nell'iframe di una pagina protetta
+const URL_DATI = params.get('csv') || CONFIG.URL_CSV;
+const stato = {
+  vista: ['mese', 'elenco', 'anno'].includes(params.get('vista')) ? params.get('vista') : CONFIG.VISTA_PREDEFINITA,
+  anno: oggi.getFullYear(), mese: oggi.getMonth(),
+  tipi: new Set(TIPI.map(t => t.chiave)),
+  festivita: params.get('festivita') !== '0',
+  quanti: Math.max(0, parseInt(params.get('quanti'), 10) || 0),
+  passati: false,
+  riservati: true,   // vista riservata: mostra gli appuntamenti con Pubblico = No
+  equipe: false,     // diventa true se la chiave è stata accettata
+  eventi: [],
+};
+(() => {
+  const m = (params.get('mese') || '').match(/^(\d{4})-(\d{1,2})$/);
+  if (m) { stato.anno = +m[1]; stato.mese = Math.min(11, Math.max(0, +m[2] - 1)); }
+  if (params.get('tipi')) {
+    const scelti = params.get('tipi').split(',').map(normalizza);
+    stato.tipi = new Set(TIPI.filter(t => scelti.some(s => t.chiave.startsWith(s) || normalizza(t.nome).startsWith(s))).map(t => t.chiave));
+  }
+})();
+
+const visibili = () => stato.eventi.filter(e => stato.tipi.has(e.tipo.chiave) && (stato.riservati || !e.riservato));
+const eventiDel = (d, lista) => lista.filter(e => e.inizio <= d && d <= e.fine)
+  .sort((a, b) => (a.oraI ? 1 : 0) - (b.oraI ? 1 : 0) || (a.oraI).localeCompare(b.oraI));
+
+function aggiornaIndirizzo() {
+  const p = new URLSearchParams(location.search);
+  p.set('vista', stato.vista);
+  if (stato.vista === 'elenco') p.delete('mese');
+  else p.set('mese', stato.anno + '-' + String(stato.mese + 1).padStart(2, '0'));
+  const tutti = stato.tipi.size === TIPI.length;
+  if (tutti) p.delete('tipi'); else p.set('tipi', [...stato.tipi].join(','));
+  if (stato.festivita) p.delete('festivita'); else p.set('festivita', '0');
+  history.replaceState(null, '', location.pathname + '?' + p.toString() + location.hash);
+  const intera = new URLSearchParams(p); intera.delete('embed');
+  document.getElementById('paginaIntera').href = location.pathname + '?' + intera.toString();
+}
+
+// ===================== TESTI =====================
+const dataBreve = d => GG[d.getDay()] + ' ' + d.getDate() + ' ' + MESI_BREVI[d.getMonth()];
+function quando(e) {
+  const multi = !stessoGiorno(e.inizio, e.fine);
+  if (!multi) {
+    const ore = e.oraI ? (e.oraF ? e.oraI + '–' + e.oraF : 'ore ' + e.oraI) : 'tutto il giorno';
+    return cap(GG_LUNGHI[e.inizio.getDay()]) + ' ' + e.inizio.getDate() + ' ' + MESI[e.inizio.getMonth()] + ' ' + e.inizio.getFullYear() + ' · ' + ore;
+  }
+  const a = dataBreve(e.inizio) + (e.inizio.getFullYear() !== e.fine.getFullYear() ? ' ' + e.inizio.getFullYear() : '') + (e.oraI ? ', ' + e.oraI : '');
+  const b = dataBreve(e.fine) + ' ' + e.fine.getFullYear() + (e.oraF ? ', ' + e.oraF : '');
+  return cap(a) + ' → ' + b;
+}
+function chip(e, d) {
+  const segue = d && !stessoGiorno(d, e.inizio);
+  const ora = !segue && e.oraI ? '<span class="ora">' + esc(e.oraI) + '</span>' : '';
+  return '<button type="button" class="chip ' + e.tipo.classe + (segue ? ' segue' : '') + (e.riservato ? ' riservato' : '') + '" data-ev="' + e.id + '" title="' +
+    esc((e.riservato ? '[Riservato] ' : '') + e.titolo + ' — ' + quando(e)) + '">' + ora + esc(e.titolo) + '</button>';
+}
+function htmlFestivita(f) {
+  return f && stato.festivita ? '<span class="fest ' + f.tipo + '">' + esc(f.nome) + '</span>' : '';
+}
+
+// ===================== VISTE =====================
+const $ = id => document.getElementById(id);
+const strettO = window.matchMedia('(max-width: 640px)');
+
+function disegna() {
+  document.querySelectorAll('.viste button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vista === stato.vista)));
+  $('nav').hidden = stato.vista === 'elenco';
+  $('etichetta').textContent = stato.vista === 'anno' ? String(stato.anno) : cap(MESI[stato.mese]) + ' ' + stato.anno;
+  disegnaFiltri();
+  const v = $('vista');
+  if (stato.vista === 'mese') v.innerHTML = strettO.matches ? vistaAgenda() : vistaMese();
+  else if (stato.vista === 'elenco') v.innerHTML = vistaElenco();
+  else v.innerHTML = vistaAnno();
+  aggiornaIndirizzo();
+}
+
+function disegnaFiltri() {
+  $('filtri').innerHTML = TIPI.map(t =>
+    '<button type="button" class="filtro ' + t.classe + '" data-tipo="' + t.chiave + '" aria-pressed="' + stato.tipi.has(t.chiave) + '">' +
+    '<span class="pallino"></span>' + esc(t.nome) + '</button>').join('') +
+    '<button type="button" class="filtro fest" data-tipo="festivita" aria-pressed="' + stato.festivita + '"><span class="pallino"></span>Festività</button>' +
+    (stato.equipe ? '<button type="button" class="filtro ris" data-tipo="riservati" aria-pressed="' + stato.riservati + '"><span class="pallino"></span>Riservati</button>' +
+      '<span class="badge-equipe">Vista riservata</span>' : '');
+}
+
+function vistaMese() {
+  const lista = visibili();
+  const primo = giorno(stato.anno, stato.mese, 1);
+  let d = piu(primo, -((primo.getDay() + 6) % 7));
+  const ultimo = giorno(stato.anno, stato.mese + 1, 0);
+  const fineGriglia = piu(ultimo, (7 - ultimo.getDay()) % 7);
+  let h = '<div class="mese">' + ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'].map(g => '<div class="intest">' + g + '</div>').join('');
+  for (; d <= fineGriglia; d = piu(d, 1)) {
+    const f = festivitaDi(d);
+    const cls = ['cella'];
+    if (d.getMonth() !== stato.mese) cls.push('fuori');
+    if (d.getDay() === 6) cls.push('sab');
+    if (d.getDay() === 0) cls.push('dom');
+    if (f && stato.festivita && f.tipo !== 'lit') cls.push(f.tipo);
+    if (stessoGiorno(d, oggi)) cls.push('oggi');
+    h += '<div class="' + cls.join(' ') + '"><div class="testa"><span class="n">' + d.getDate() + '</span>' + htmlFestivita(f) + '</div>' +
+      eventiDel(d, lista).map(e => chip(e, d)).join('') + '</div>';
+  }
+  return h + '</div>';
+}
+
+function vistaAgenda() {
+  const lista = visibili();
+  const ultimo = giorno(stato.anno, stato.mese + 1, 0).getDate();
+  let h = '';
+  for (let g = 1; g <= ultimo; g++) {
+    const d = giorno(stato.anno, stato.mese, g);
+    const f = stato.festivita ? festivitaDi(d) : null;
+    const ev = eventiDel(d, lista);
+    if (!f && !ev.length) continue;
+    const cls = [d.getDay() === 0 ? 'dom' : '', f && f.tipo === 'naz' ? 'naz' : ''].join(' ');
+    h += '<li class="' + cls + '"><div class="ag-data"><b>' + g + '</b><span>' + GG[d.getDay()] + '</span></div><div class="ag-corpo">' +
+      htmlFestivita(f) + ev.map(e => chip(e, d)).join('') + '</div></li>';
+  }
+  return h ? '<ol class="agenda">' + h + '</ol>' : '<p class="vuoto">Nessun appuntamento in ' + MESI[stato.mese] + '.</p>';
+}
+
+function vistaElenco() {
+  let lista = visibili();
+  const futuri = lista.filter(e => e.fine >= oggi);
+  lista = stato.passati ? lista : futuri;
+  if (stato.quanti) lista = lista.slice(0, stato.quanti);
+  if (!lista.length) return '<p class="vuoto">Nessun appuntamento in programma.</p>';
+  let h = '<div class="elenco">', meseCorrente = '', giornoCorrente = '';
+  lista.forEach(e => {
+    const stessoDi = chiaveData(e.inizio) === giornoCorrente;
+    giornoCorrente = chiaveData(e.inizio);
+    const m = cap(MESI[e.inizio.getMonth()]) + ' ' + e.inizio.getFullYear();
+    if (m !== meseCorrente) { h += '<h2>' + m + '</h2>'; meseCorrente = m; }
+    const luogo = e.luogo ? ' · ' + esc(e.luogo) : '';
+    h += '<article class="voce ' + e.tipo.classe + (e.fine < oggi ? ' passato' : '') + (stessoDi ? ' stesso-giorno' : '') + '">' +
+      '<div class="voce-data"><span class="g">' + e.inizio.getDate() + '</span><span class="m">' + MESI_BREVI[e.inizio.getMonth()] + '</span><span class="w">' + GG[e.inizio.getDay()] + '</span></div>' +
+      '<div class="voce-corpo"><span class="voce-tipo">' + esc(e.tipoTesto) + '</span>' + htmlRis(e) + '<h3>' + esc(e.titolo) + '</h3>' +
+      '<p class="meta">' + esc(quando(e)) + luogo + '</p>' + (e.descr ? '<p class="descr">' + esc(e.descr) + '</p>' : '') + htmlNote(e) + '</div></article>';
+  });
+  h += '</div>';
+  if (!stato.quanti && futuri.length !== visibili().length) {
+    h += '<div class="piede-elenco"><button type="button" class="btn" id="mostraPassati">' +
+      (stato.passati ? 'Nascondi gli appuntamenti passati' : 'Mostra anche gli appuntamenti passati') + '</button></div>';
+  }
+  return h;
+}
+
+function vistaAnno() {
+  const lista = visibili();
+  let h = '<div class="anno">';
+  for (let m = 0; m < 12; m++) {
+    const primo = giorno(stato.anno, m, 1);
+    const vuoti = (primo.getDay() + 6) % 7;
+    const n = giorno(stato.anno, m + 1, 0).getDate();
+    h += '<section class="mini"><button type="button" class="mini-tit" data-mese="' + m + '">' + cap(MESI[m]) + '</button><div class="mini-grid">' +
+      ['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(x => '<span class="ig">' + x + '</span>').join('') +
+      '<span class="d vuoto"></span>'.repeat(vuoti);
+    for (let g = 1; g <= n; g++) {
+      const d = giorno(stato.anno, m, g);
+      const f = stato.festivita ? festivitaDi(d) : null;
+      const ev = eventiDel(d, lista);
+      const cls = ['d'];
+      if (d.getDay() === 6) cls.push('sab');
+      if (d.getDay() === 0) cls.push('dom');
+      if (f) cls.push(f.tipo);
+      if (ev.length) cls.push('ev', ev[0].tipo.classe);
+      if (stessoGiorno(d, oggi)) cls.push('oggi');
+      const titolo = [f ? f.nome : '', ...ev.map(e => (e.oraI ? e.oraI + ' ' : '') + e.titolo)].filter(Boolean).join('\n');
+      h += '<span class="' + cls.join(' ') + '"' + (titolo ? ' title="' + esc(titolo) + '"' : '') + (ev.length ? ' data-mese="' + m + '" role="button" tabindex="0"' : '') + '>' + g + '</span>';
+    }
+    h += '</div></section>';
+  }
+  h += '</div><div class="legenda-anno">' +
+    TIPI.filter(t => stato.tipi.has(t.chiave)).map(t => '<span class="' + t.classe + '" style="--sw:var(--cb)">' + esc(t.nome) + '</span>').join('') +
+    (stato.festivita ? '<span style="--sw:var(--rosso-bg)">Festività nazionale</span><span style="--sw:var(--viola)">Ricorrenza liturgica</span>' : '') + '</div>';
+  return h;
+}
+
+// ===================== FINESTRE =====================
+/** Apre una finestra. Incorporata (embed=1) la mette vicino al punto cliccato:
+    in un iframe alto quanto il contenuto il centro dell'iframe può essere fuori schermo. */
+function apriFinestra(dlg, origine) {
+  dlg.style.top = dlg.style.bottom = dlg.style.margin = '';
+  dlg.showModal();
+  if (!EMBED || !origine) return;
+  const y = origine.getBoundingClientRect().top;
+  const top = Math.max(8, Math.min(y - 24, window.innerHeight - dlg.offsetHeight - 8));
+  dlg.style.margin = '0 auto';
+  dlg.style.top = top + 'px';
+  dlg.style.bottom = 'auto';
+}
+
+function apriEvento(id, origine) {
+  const e = stato.eventi.find(x => x.id === id);
+  if (!e) return;
+  $('dlgEventoCorpo').innerHTML =
+    '<span class="voce-tipo ' + e.tipo.classe + '">' + esc(e.tipoTesto) + '</span>' + htmlRis(e) +
+    '<h2>' + esc(e.titolo) + '</h2>' +
+    '<p class="meta">' + esc(quando(e)) + '</p>' +
+    (e.luogo ? '<p><b>Luogo:</b> ' + esc(e.luogo) + '</p>' : '') +
+    (e.descr ? '<p class="descr">' + esc(e.descr) + '</p>' : '') + htmlNote(e) +
+    '<div class="azioni"><button type="button" class="btn primario" data-chiudi>Chiudi</button></div>';
+  apriFinestra($('dlgEvento'), origine);
+}
+
+function preparaIscrizione() {
+  if (!CONFIG.URL_FEED_ICS) return;
+  const url = stato.equipe
+    ? CONFIG.URL_FEED_ICS + (CONFIG.URL_FEED_ICS.includes('?') ? '&' : '?') + 'chiave=' + encodeURIComponent(CHIAVE)
+    : CONFIG.URL_FEED_ICS;
+  $('btnIscriviti').hidden = false;
+  $('linkFeed').value = url;
+  $('apriWebcal').href = url.replace(/^https?:/, 'webcal:');
+  $('avvisoChiave').hidden = !stato.equipe;
+}
+
+// ===================== STAMPA =====================
+function paginaStampa(y, m) {
+  const lista = visibili();
+  const n = giorno(y, m + 1, 0).getDate();
+  let righe = '';
+  for (let g = 1; g <= 31; g++) {
+    if (g > n) { righe += '<tr class="vuota"><td></td><td></td><td></td><td></td><td></td></tr>'; continue; }
+    const d = giorno(y, m, g);
+    const f = festivitaDi(d);
+    const cls = [d.getDay() === 6 ? 'sab' : '', d.getDay() === 0 ? 'dom' : '', d.getDay() === 1 && g > 1 ? 'lun' : '', f && f.tipo !== 'lit' ? f.tipo : ''].join(' ');
+    const ev = eventiDel(d, lista).map(e => {
+      const segue = !stessoGiorno(d, e.inizio);
+      return '<span class="pev ' + e.tipo.classe + (e.riservato ? ' ris' : '') + '"><i></i>' + (!segue && e.oraI ? '<b>' + e.oraI + '</b> ' : '') + esc(e.titolo) + (e.luogo && !segue ? ' · ' + esc(e.luogo) : '') + (e.riservato ? ' (riservato)' : '') + '</span>';
+    }).join('');
+    righe += '<tr class="' + cls + '"><td>' + g + '</td><td class="gs">' + GG[d.getDay()] + '</td><td>' +
+      (f ? '<span class="fest ' + f.tipo + '">' + esc(f.nome) + '</span>' : '') + '</td><td>' + ev + '</td><td></td></tr>';
+  }
+  const stamp = oggi.toLocaleDateString('it-IT');
+  return '<section class="pagina"><header><h2>' + cap(MESI[m]) + ' ' + y + '</h2><span>' + esc(CONFIG.TITOLO) + ' · ' + esc(CONFIG.SOTTOTITOLO) + '</span></header>' +
+    '<table><colgroup><col style="width:8mm"><col style="width:9mm"><col style="width:40mm"><col><col style="width:50mm"></colgroup>' +
+    '<thead><tr><th colspan="2">Giorno</th><th>Festività e ricorrenze</th><th class="evid">Appuntamenti</th><th>Note</th></tr></thead><tbody>' + righe + '</tbody></table>' +
+    '<div class="note">Note del mese</div><div class="riga"></div><div class="riga"></div><div class="riga"></div>' +
+    '<footer>Stampato il ' + stamp + '</footer></section>';
+}
+/** Prospetto dell'anno su un foglio A4 orizzontale: 12 colonne (mesi) × 31 righe (giorni). */
+function paginaProspetto(y) {
+  const lista = visibili();
+  const INIZIALI = ['D', 'L', 'M', 'M', 'G', 'V', 'S'];
+  let corpo = '';
+  for (let g = 1; g <= 31; g++) {
+    corpo += '<tr>';
+    for (let m = 0; m < 12; m++) {
+      if (g > giorno(y, m + 1, 0).getDate()) { corpo += '<td class="nd"></td>'; continue; }
+      const d = giorno(y, m, g);
+      const f = festivitaDi(d);
+      const ev = eventiDel(d, lista);
+      const cls = [d.getDay() === 6 ? 'sab' : '', d.getDay() === 0 ? 'dom' : '', f && f.tipo !== 'lit' ? f.tipo : ''].join(' ').trim();
+      let testo = '';
+      if (ev.length) {
+        const e = ev[0];
+        testo = '<span class="ae ' + e.tipo.classe + (e.riservato ? ' ris' : '') + '">' +
+          (e.oraI && stessoGiorno(d, e.inizio) ? e.oraI + ' ' : '') + esc(e.titolo) + '</span>' +
+          (ev.length > 1 ? '<span class="piu">+' + (ev.length - 1) + '</span>' : '');
+      } else if (f) {
+        testo = '<span class="af ' + f.tipo + '">' + esc(f.breve) + '</span>';
+      }
+      const titolo = [f ? f.nome : '', ...ev.map(e => e.titolo)].filter(Boolean).join(' · ');
+      corpo += '<td' + (cls ? ' class="' + cls + '"' : '') + (titolo ? ' title="' + esc(titolo) + '"' : '') + '><div class="ac"><span class="ag">' + g +
+        '</span><span class="aw">' + INIZIALI[d.getDay()] + '</span>' + testo + '</div></td>';
+    }
+    corpo += '</tr>';
+  }
+  const legenda = TIPI.filter(t => stato.tipi.has(t.chiave))
+    .map(t => '<span class="' + t.classe + '"><i></i>' + esc(t.nome) + '</span>').join('') +
+    '<span><i style="--cb:var(--rosso-bg);--c:var(--rosso)"></i>Festività nazionale</span>' +
+    '<span><i style="--cb:#e2e2e2;--c:#e2e2e2"></i>Domenica</span>' +
+    '<span>+1 = altri appuntamenti nello stesso giorno</span>' +
+    '<span class="stamp">Stampato il ' + oggi.toLocaleDateString('it-IT') + '</span>';
+  return '<section class="prospetto"><header><h2>' + esc(CONFIG.TITOLO) + ' · ' + y + '</h2><span>' + esc(CONFIG.SOTTOTITOLO) + '</span></header>' +
+    '<table class="tab-anno"><thead><tr>' + MESI.map(m => '<th>' + cap(m) + '</th>').join('') + '</tr></thead><tbody>' + corpo + '</tbody></table>' +
+    '<div class="leg">' + legenda + '</div></section>';
+}
+
+function stampa(html, orizzontale) {
+  $('dlgStampa').close();
+  $('stampa').innerHTML = html;
+  $('stilePagina').textContent = orizzontale ? '@page { size: A4 landscape; margin: 8mm; }' : '';
+  setTimeout(() => window.print(), 50);
+}
+window.addEventListener('afterprint', () => { $('stampa').innerHTML = ''; $('stilePagina').textContent = ''; });
+
+// ===================== EVENTI DI PAGINA =====================
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('button, [data-mese], [data-chiudi]');
+  if (!t) return;
+  if (t.dataset.chiudi !== undefined) { t.closest('dialog').close(); return; }
+  if (t.dataset.vista) { stato.vista = t.dataset.vista; disegna(); return; }
+  if (t.dataset.ev) { apriEvento(t.dataset.ev, t); return; }
+  if (t.dataset.tipo) {
+    if (t.dataset.tipo === 'festivita') stato.festivita = !stato.festivita;
+    else if (t.dataset.tipo === 'riservati') stato.riservati = !stato.riservati;
+    else stato.tipi.has(t.dataset.tipo) ? stato.tipi.delete(t.dataset.tipo) : stato.tipi.add(t.dataset.tipo);
+    disegna(); return;
+  }
+  if (t.dataset.mese !== undefined && stato.vista === 'anno') { stato.mese = +t.dataset.mese; stato.vista = 'mese'; disegna(); return; }
+  if (t.id === 'mostraPassati') { stato.passati = !stato.passati; disegna(); }
+});
+document.addEventListener('keydown', ev => {
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('.mini-grid [data-mese]')) { ev.preventDefault(); ev.target.click(); }
+});
+function sposta(passo) {
+  if (stato.vista === 'anno') stato.anno += passo;
+  else {
+    const d = giorno(stato.anno, stato.mese + passo, 1);
+    stato.anno = d.getFullYear(); stato.mese = d.getMonth();
+  }
+  disegna();
+}
+$('prec').onclick = () => sposta(-1);
+$('succ').onclick = () => sposta(1);
+$('oggi').onclick = () => { stato.anno = oggi.getFullYear(); stato.mese = oggi.getMonth(); disegna(); };
+$('btnIscriviti').onclick = () => apriFinestra($('dlgIscriviti'), $('btnIscriviti'));
+$('copiaFeed').onclick = async () => {
+  const campo = $('linkFeed');
+  try { await navigator.clipboard.writeText(campo.value); $('copiaFeed').textContent = 'Copiato ✓'; }
+  catch (e) { campo.focus(); campo.select(); $('copiaFeed').textContent = 'Premi Ctrl+C / ⌘C'; }
+};
+$('btnStampa').onclick = () => {
+  $('stampaMese').textContent = cap(MESI[stato.mese]) + ' ' + stato.anno + ' (1 foglio)';
+  $('stampaAnno').textContent = 'Tutto il ' + stato.anno + ' (12 fogli)';
+  $('stampaProspetto').textContent = 'Prospetto del ' + stato.anno + ' (1 foglio orizzontale)';
+  apriFinestra($('dlgStampa'), $('btnStampa'));
+};
+$('stampaMese').onclick = () => stampa(paginaStampa(stato.anno, stato.mese));
+$('stampaAnno').onclick = () => stampa(Array.from({ length: 12 }, (_, m) => paginaStampa(stato.anno, m)).join(''));
+$('stampaProspetto').onclick = () => stampa(paginaProspetto(stato.anno), true);
+strettO.addEventListener('change', () => { if (stato.vista === 'mese') disegna(); });
+
+// ===================== ALTEZZA DELL'IFRAME =====================
+// Incorporata in un'altra pagina, comunica la propria altezza: lo snippet del README la usa
+// per allungare l'iframe, così non compare una seconda barra di scorrimento.
+if (EMBED && window.parent !== window) {
+  let ultima = 0;
+  const invia = () => {
+    const h = Math.ceil(document.querySelector('.app').getBoundingClientRect().height);
+    if (h && Math.abs(h - ultima) > 2) { ultima = h; window.parent.postMessage({ calendarioAltezza: h }, '*'); }
+  };
+  new ResizeObserver(invia).observe(document.querySelector('.app'));
+  window.addEventListener('load', invia);
+}
+
+// ===================== AVVIO =====================
+async function avvia() {
+  document.title = CONFIG.TITOLO;
+  $('titolo').textContent = CONFIG.TITOLO;
+  $('sottotitolo').textContent = CONFIG.SOTTOTITOLO;
+  if (EMBED) { document.body.classList.add('embed'); $('paginaIntera').hidden = false; }
+  if (SENZA_COMANDI) document.body.classList.add('senza-comandi');
+  const avviso = (testo, errore) => { $('avviso').hidden = false; $('avviso').className = 'avviso' + (errore ? ' errore' : ''); $('avviso').innerHTML = testo; };
+  const adesso = () => new Date().toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+  if (CHIAVE) {
+    // Vista riservata: dati dall'app web Apps Script, compresi gli appuntamenti riservati
+    try {
+      if (!CONFIG.URL_FEED_ICS) throw new Error('in index.html manca URL_FEED_ICS, il link /exec dell\'app web');
+      const url = CONFIG.URL_FEED_ICS + (CONFIG.URL_FEED_ICS.includes('?') ? '&' : '?') +
+        'formato=json&chiave=' + encodeURIComponent(CHIAVE) + '&_=' + Date.now();
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('l\'app web ha risposto ' + r.status);
+      const testo = await r.text();
+      let dati;
+      try { dati = JSON.parse(testo); } catch (e) {
+        throw new Error('l\'app web non restituisce dati: hai pubblicato una nuova versione dello script con accesso «Chiunque»?');
+      }
+      stato.eventi = trasformaJson(dati);
+      stato.equipe = !!dati.equipe;
+      if (!stato.equipe) avviso('<b>Chiave non valida:</b> sono mostrati solo gli appuntamenti pubblici. Controlla che la chiave nell\'indirizzo sia uguale a CHIAVE_EQUIPE nello script.', true);
+      $('fonte').textContent = (stato.equipe ? 'Vista riservata · ' : '') + 'Aggiornato: ' + adesso();
+    } catch (e) {
+      avviso('<b>Non riesco a leggere gli appuntamenti</b> (' + esc(e.message) + '). Sono mostrate solo le festività.', true);
+    }
+  } else if (!URL_DATI) {
+    stato.eventi = datiDiEsempio();
+    avviso('<b>Dati di esempio.</b> Per mostrare gli appuntamenti veri inserisci in <code>index.html</code> il link CSV della scheda «Pubblico» (vedi README).');
+    $('fonte').textContent = 'Dati di esempio';
+  } else {
+    try {
+      const r = await fetch(URL_DATI, { cache: 'no-store' });
+      if (!r.ok) throw new Error('il server ha risposto ' + r.status);
+      const testo = await r.text();
+      if (/^\s*</.test(testo)) throw new Error('il link non restituisce un CSV: controlla di aver scelto «.csv» in «Pubblica sul web»');
+      stato.eventi = trasformaRighe(leggiCSV(testo));
+      $('fonte').textContent = 'Aggiornato: ' + adesso();
+    } catch (e) {
+      avviso('<b>Non riesco a leggere gli appuntamenti</b> (' + esc(e.message) + '). Sono mostrate solo le festività.', true);
+    }
+  }
+  preparaIscrizione();
+  disegna();
+}
+avvia();
+</script>
+</body>
+</html>
